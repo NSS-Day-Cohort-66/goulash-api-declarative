@@ -1,20 +1,32 @@
 import json
 from nss_handler import status
 from repository import db_get_single, db_get_all, db_delete, db_update, db_create
+from services import expand_hauler
 
 
 class HaulerView:
-    def get(self, handler, pk):
+    def get(self, handler, query_params, pk):
+        sql = "SELECT h.id, h.name, h.dock_id"
         if pk != 0:
-            sql = "SELECT h.id, h.name, h.dock_id FROM Hauler h WHERE h.id = ?"
-            query_results = db_get_single(sql, pk)
-            serialized_hauler = json.dumps(dict(query_results))
+            if "_expand" in query_params:
+                sql += ", d.id dockId, d.location, d.capacity FROM Hauler h JOIN Dock d ON d.id = h.dock_id WHERE h.id = ?"
+                query_results = db_get_single(sql, pk)
+                serialized_hauler = json.dumps(expand_hauler(query_results))
+            else:
+                sql += " FROM Hauler h WHERE h.id = ?"
+                query_results = db_get_single(sql, pk)
+                serialized_hauler = json.dumps(dict(query_results))
 
             return handler.response(serialized_hauler, status.HTTP_200_SUCCESS.value)
         else:
-            sql = "SELECT h.id, h.name, h.dock_id FROM Hauler h"
-            query_results = db_get_all(sql)
-            haulers = [dict(row) for row in query_results]
+            if "_expand" in query_params:
+                sql += ", d.id dockId, d.location, d.capacity FROM Hauler h JOIN Dock d ON d.id = h.dock_id"
+                query_results = db_get_all(sql)
+                haulers = [expand_hauler(row) for row in query_results]
+            else:
+                sql += " FROM Hauler h"
+                query_results = db_get_all(sql)
+                haulers = [dict(row) for row in query_results]
             serialized_haulers = json.dumps(haulers)
 
             return handler.response(serialized_haulers, status.HTTP_200_SUCCESS.value)
