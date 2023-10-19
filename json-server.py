@@ -13,7 +13,7 @@ class JSONServer(HandleRequests):
         view = self.determine_view(url)
 
         try:
-            view.get(self, url["pk"])
+            view.get(self, url["query_params"], url["pk"])
         except AttributeError:
             return self.response(
                 "No view for that route",
